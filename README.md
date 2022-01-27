@@ -40,6 +40,8 @@ data-mining-459
 3. Navigate to the project directory.
 4. Create your environment from the provided environment file : ```conda env create -f environment.yml```
 5. Activate environment: ```conda activate cmpt459```
+6. Optional: To use conda environment in VS code terminal, type command ```code``` right after activating the environment.
+
 
 
 
