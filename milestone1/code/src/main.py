@@ -9,11 +9,11 @@ from shapely.geometry import Point
 import geopandas as gpd
 import seaborn as sns 
 from geopandas import GeoDataFrame
-from geopy.geocoders import Nominatim
+#from geopy.geocoders import Nominatim
 
-cases_train = pd.read_csv('../data/cases_2021_train.csv')
-cases_test = pd.read_csv('../data/cases_2021_test.csv')
-location = pd.read_csv('../data/location_2021.csv')
+cases_train = pd.read_csv('milestone1/code/data/cases_2021_train.csv')
+cases_test = pd.read_csv('milestone1/code/data/cases_2021_test.csv')
+location = pd.read_csv('milestone1/code/data/location_2021.csv')
 
 def main():
     section_one()
@@ -21,6 +21,8 @@ def main():
     cases_train.to_csv('cases_train_clean.csv')
     cases_test.to_csv('cases_test_clean.csv')
     location.to_csv('location_clean.csv')
+    section_six()
+
 
 
 #1.1
@@ -106,7 +108,8 @@ def section_four():
     test['age'] = test['age'].apply(lambda x: int(float(x)))
     cases_test.loc[(cases_test['age'].str.len()>3)] = test 
 
-    
+
+
     #Date Confirmation
     cases_test.loc[cases_test['date_confirmation'].isna(),"date_confirmation"] = cases_test['date_confirmation'].mode()[0]
 
@@ -147,6 +150,34 @@ def section_four():
     #print("Location Dataset(after cleaning):")
     #print(location.isna().sum())
     #print(len(location.index))
+
+def section_six():
+    df1 = pd.read_csv('milestone1/code/src/location_clean.csv').rename(
+        columns={'Country_Region': 'country', 'Province_State': 'province'})
+
+    cases_train1 = pd.read_csv('milestone1/code/src/cases_train_clean.csv')
+    cases_test1 = pd.read_csv('milestone1/code/src/cases_test_clean.csv')
+    df1.loc[df1['country'] == "Korea, South", 'country'] = 'South Korea'
+    df1.loc[df1['country'] == 'US', 'country'] = 'United States'
+    df1.loc[df1['country'] == 'Taiwan*', 'country'] = 'Taiwan'
+    new_df1 = df1
+    new_df1 = df1.groupby(['province', 'country']).agg({'Confirmed':'sum','Recovered':'sum',
+                                                        'Deaths':'sum', 'Active':'sum',
+                                                        'Incident_Rate':'mean',
+                                                        'Case_Fatality_Ratio':'mean'})
+    merged = pd.merge(cases_train1, new_df1, how='left', on=['country', 'province'])
+    merged1 = pd.merge(cases_test1, new_df1, how='left', on=['country', 'province'])
+
+    merged.to_csv('milestone1/code/data/merged_train.csv')
+    merged1.to_csv('milestone1/code/data/merged_test.csv')
+    # df2 = df1.groupby(['province', 'country']).sum()
+    # df3 = df1.groupby(['province', 'country']).mean(numeric_only=True)
+    # new_df1['Confirmed'] = df2['Confirmed']
+    # new_df1['Recovered'] = df2['Recovered']
+    # new_df1['Deaths'] = df2['Deaths']
+    # new_df1['Active'] = df2['Active']
+    # new_df1['Incident_Rate'] = df3['Incident_Rate']
+    # new_df1['Case_Fatality_Ratio'] = df3['Case_Fatality_Ratio']
 
 main()
 
