@@ -11,9 +11,22 @@ import seaborn as sns
 from geopandas import GeoDataFrame
 from geopy.geocoders import Nominatim
 
+cases_train = pd.read_csv('../data/cases_2021_train.csv')
+cases_test = pd.read_csv('../data/cases_2021_test.csv')
+location = pd.read_csv('../data/location_2021.csv')
+
+def main():
+    section_one()
+    section_four()
+    cases_train.to_csv('cases_train_clean.csv')
+    cases_test.to_csv('cases_test_clean.csv')
+    location.to_csv('location_clean.csv')
+
+
 #1.1
 
-def section_one(cases_train,cases_test,location):
+def section_one():
+    global cases_train, cases_test, location
     cases_train.groupby('outcome').size()
     hospitalzed = ['Discharged', 'Discharged from hospital', 'Hospitalized', 'critical condition',
     'discharge', 'discharged']
@@ -28,12 +41,12 @@ def section_one(cases_train,cases_test,location):
 
 #1.4
 
-def section_four(cases_train,cases_test,location):
-
+def section_four():
+    global cases_train, cases_test, location
     #Cleaning Training Dataset
-    print("Train Dataset(before cleaning):")
-    print(len(cases_train.index))
-    print(cases_train.isna().sum())
+    #print("Train Dataset(before cleaning):")
+    #print(len(cases_train.index))
+    #print(cases_train.isna().sum())
 
 
     #Age
@@ -65,15 +78,15 @@ def section_four(cases_train,cases_test,location):
 
     #Date Confirmation
     cases_train.loc[cases_train['date_confirmation'].isna(),"date_confirmation"] = cases_train['date_confirmation'].mode()[0]
-    print("Train Dataset(after cleaning):")
-    print(cases_train.isna().sum())
-    print(len(cases_train.index))
+    #print("Train Dataset(after cleaning):")
+    #print(cases_train.isna().sum())
+    #print(len(cases_train.index))
     
 
     #Cleaning Test Dataset
-    print("Test Dataset(before cleaning):")
-    print(len(cases_test.index))
-    print(len(cases_train.index))
+    #print("Test Dataset(before cleaning):")
+    #print(len(cases_test.index))
+    #print(len(cases_train.index))
     
     #Age
     cases_test = cases_test.dropna(subset=['age'])
@@ -97,8 +110,8 @@ def section_four(cases_train,cases_test,location):
     #Date Confirmation
     cases_test.loc[cases_test['date_confirmation'].isna(),"date_confirmation"] = cases_test['date_confirmation'].mode()[0]
 
-    print(cases_test.isna().sum())
-    print(len(cases_test.index))
+    #print(cases_test.isna().sum())
+    #print(len(cases_test.index))
 
     #Sex
     cases_test.loc[cases_test['sex'].isna(),"sex"] = cases_test['sex'].mode()[0]
@@ -114,14 +127,14 @@ def section_four(cases_train,cases_test,location):
 
     #Country
     cases_test.loc[cases_test['country'].isna(),"country"] = "Taiwan"
-    print("Test Dataset(after cleaning):")
-    print(cases_test.isna().sum())
-    print(len(cases_test.index))
+    #print("Test Dataset(after cleaning):")
+    #print(cases_test.isna().sum())
+    #print(len(cases_test.index))
 
     #Cleaning Location Data
-    print("Location Dataset(before cleaning):")
-    print(location.isna().sum())
-    print(len(location.index))
+    #print("Location Dataset(before cleaning):")
+    #print(location.isna().sum())
+    #print(len(location.index))
     location = location.drop(location[location['Province_State'].isna()].index)
     location['Incident_Rate'] = location['Incident_Rate'].fillna(location.groupby('Country_Region')['Incident_Rate'].transform('mean'))
     location['Case_Fatality_Ratio'] = location['Case_Fatality_Ratio'].fillna(location.groupby('Country_Region')['Case_Fatality_Ratio'].transform('mean'))
@@ -131,18 +144,9 @@ def section_four(cases_train,cases_test,location):
     location = location.drop(location[location['Long_'].isna()].index)
     location = location.drop(location[location['Case_Fatality_Ratio'].isna()].index)
     location.isna().sum()
-    print("Location Dataset(after cleaning):")
-    print(location.isna().sum())
-    print(len(location.index))
-
-    
-
-def main():
-    cases_train = pd.read_csv('../data/cases_2021_train.csv')
-    cases_test = pd.read_csv('../data/cases_2021_test.csv')
-    location = pd.read_csv('../data/location_2021.csv')
-    section_one(cases_train,cases_test,location)
-    section_four(cases_train,cases_test,location)
+    #print("Location Dataset(after cleaning):")
+    #print(location.isna().sum())
+    #print(len(location.index))
 
 main()
 
