@@ -9,22 +9,23 @@ from shapely.geometry import Point
 import geopandas as gpd
 import seaborn as sns 
 from geopandas import GeoDataFrame
-#from geopy.geocoders import Nominatim
+from math import cos, asin, sqrt
+from geopy.geocoders import Nominatim
+from geopy import distance
+import sys
 
-cases_train = pd.read_csv('milestone1/code/data/cases_2021_train.csv')
-cases_test = pd.read_csv('milestone1/code/data/cases_2021_test.csv')
-location = pd.read_csv('milestone1/code/data/location_2021.csv')
+cases_train = pd.read_csv('../data/cases_2021_train.csv')
+cases_test = pd.read_csv('../data/cases_2021_test.csv')
+location = pd.read_csv('../data/location_2021.csv')
 
 def main():
+    global cases_train, cases_test, location
     section_one()
     section_four()
     cases_train.to_csv('cases_train_clean.csv')
     cases_test.to_csv('cases_test_clean.csv')
     location.to_csv('location_clean.csv')
     section_six()
-
-
-
 #1.1
 
 def section_one():
@@ -66,8 +67,9 @@ def section_four():
     cases_train.loc[cases_train['country'].isna(),"country"] = "Taiwan"
 
     #Province 
-    
-    cases_train = cases_train.drop(cases_train[cases_train['province'].isna()].index)
+    #print(cases_train.isna().sum())
+    cases_train.loc[cases_train["province"].isna(), "province"] = cases_train['country']
+
 
     #Sex
     cases_train.loc[cases_train['sex'].isna(),"sex"] = cases_train['sex'].mode()[0]
@@ -83,6 +85,8 @@ def section_four():
     #print("Train Dataset(after cleaning):")
     #print(cases_train.isna().sum())
     #print(len(cases_train.index))
+    cases_train['latitude'] = cases_train['latitude'].apply(lambda x: float(x))
+    cases_train['longitude'] = cases_train['longitude'].apply(lambda x: float(x))
     
 
     #Cleaning Test Dataset
@@ -138,7 +142,6 @@ def section_four():
     #print("Location Dataset(before cleaning):")
     #print(location.isna().sum())
     #print(len(location.index))
-    location = location.drop(location[location['Province_State'].isna()].index)
     location['Incident_Rate'] = location['Incident_Rate'].fillna(location.groupby('Country_Region')['Incident_Rate'].transform('mean'))
     location['Case_Fatality_Ratio'] = location['Case_Fatality_Ratio'].fillna(location.groupby('Country_Region')['Case_Fatality_Ratio'].transform('mean'))
     location['Recovered'] = location['Recovered'].fillna(location.groupby('Country_Region')['Recovered'].transform('mean'))
@@ -146,30 +149,64 @@ def section_four():
     location = location.drop(location[location['Lat'].isna()].index)
     location = location.drop(location[location['Long_'].isna()].index)
     location = location.drop(location[location['Case_Fatality_Ratio'].isna()].index)
-    location.isna().sum()
+    #print(location.isna().sum())
     #print("Location Dataset(after cleaning):")
     #print(location.isna().sum())
     #print(len(location.index))
-
+    location.loc[location['Country_Region'] == "Korea, South", 'Country_Region'] = 'South Korea'
+    location.loc[location['Country_Region'] == 'US', 'Country_Region'] = 'United States'
+    location.loc[location['Country_Region'] == 'Taiwan*', 'Country_Region'] = 'Taiwan'
+    location['Lat'] = location['Lat'].apply(lambda x: float(x))
+    location['Long_'] = location['Long_'].apply(lambda x: float(x))
+    #Provinces
+    #location = location.drop(location[location['Province_State'].isna()].index)
+    
+    #Find entries na in province of location
+    
+    location= location.reset_index()
+    cases_train = cases_train.reset_index()
+    #pass long and lat to closest 
+    #print(provinceTemp.head())
+    for i,x in location.iterrows():
+        if(pd.isna(x['Province_State'])):
+            pt1 = (x['Lat'],x['Long_'])
+            trainTemp = cases_train.loc[cases_train['country'] == x['Country_Region']]
+            if(len(trainTemp.index) > 0):
+                min = sys.float_info.max
+                for j,y in trainTemp.iterrows():
+                    pt2 = (y['latitude'],y['longitude'])
+                    if(distance(pt1[0],pt1[1],pt2[0],pt2[1])<min):
+                        min = distance(pt1[0],pt1[1],pt2[0],pt2[1])
+                        index = y
+                location.at[i,'Province_State'] = index['province']
+    location = location.drop(location[location['Province_State'].isna()].index)
+    #print(location.isna().sum())
 def section_six():
-    df1 = pd.read_csv('milestone1/code/src/location_clean.csv').rename(
+    df1 = pd.read_csv('location_clean.csv').rename(
         columns={'Country_Region': 'country', 'Province_State': 'province'})
 
-    cases_train1 = pd.read_csv('milestone1/code/src/cases_train_clean.csv')
-    cases_test1 = pd.read_csv('milestone1/code/src/cases_test_clean.csv')
-    df1.loc[df1['country'] == "Korea, South", 'country'] = 'South Korea'
-    df1.loc[df1['country'] == 'US', 'country'] = 'United States'
-    df1.loc[df1['country'] == 'Taiwan*', 'country'] = 'Taiwan'
+    cases_train1 = pd.read_csv('cases_train_clean.csv')
+    #cases_test1 = pd.read_csv('milestone1/code/src/cases_test_clean.csv')
     new_df1 = df1
-    new_df1 = df1.groupby(['province', 'country']).agg({'Confirmed':'sum','Recovered':'sum',
+    new_df1 = df1.groupby(['country','province']).agg({'Confirmed':'sum','Recovered':'sum',
                                                         'Deaths':'sum', 'Active':'sum',
                                                         'Incident_Rate':'mean',
-                                                        'Case_Fatality_Ratio':'mean'})
-    merged = pd.merge(cases_train1, new_df1, how='left', on=['country', 'province'])
-    merged1 = pd.merge(cases_test1, new_df1, how='left', on=['country', 'province'])
-
-    merged.to_csv('milestone1/code/data/merged_train.csv')
-    merged1.to_csv('milestone1/code/data/merged_test.csv')
+                                                        'Case_Fatality_Ratio':'mean'})                                                 
+    #print(cases_train.isna().sum())
+    #print(new_df1.isna().sum())
+    #print(new_df1.head())
+    #print(cases_train1.head())
+    #new_df1= new_df1.reset_index()
+    #cases_train1 = cases_train1.reset_index()
+    print(len(location.index))
+    print(len(cases_train1.index))
+    merged = pd.merge(cases_train1,new_df1, how='inner', on=['country', 'province'])
+    print(len(merged.index))
+    print(merged.head())
+    #merged1 = pd.merge(cases_test1, new_df1, how='left', on=['country', 'province'])
+    print(merged.loc[merged['country'] == "Yemen"])
+    merged.to_csv('merged_train.csv')
+    #merged1.to_csv('milestone1/code/data/merged_test.csv')
     # df2 = df1.groupby(['province', 'country']).sum()
     # df3 = df1.groupby(['province', 'country']).mean(numeric_only=True)
     # new_df1['Confirmed'] = df2['Confirmed']
@@ -179,6 +216,10 @@ def section_six():
     # new_df1['Incident_Rate'] = df3['Incident_Rate']
     # new_df1['Case_Fatality_Ratio'] = df3['Case_Fatality_Ratio']
 
+def distance(lat1, lon1, lat2, lon2):
+    p = 0.017453292519943295
+    hav = 0.5 - cos((lat2-lat1)*p)/2 + cos(lat1*p)*cos(lat2*p) * (1-cos((lon2-lon1)*p)) / 2
+    return 12742 * asin(sqrt(hav))
 main()
 
 
