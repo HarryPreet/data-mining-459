@@ -145,7 +145,7 @@ def section_four():
     location_province_test()
     
 def location_province_train():
-    location = pd.read_csv('../data/location_2021.csv')
+    location = pd.read_csv('location_clean.csv')
     cases_train = pd.read_csv('cases_train_clean.csv')
     location= location.reset_index()
     cases_train = cases_train.reset_index()
@@ -165,7 +165,7 @@ def location_province_train():
     location.to_csv('location_clean_train.csv')
 
 def location_province_test():
-    location = pd.read_csv('../data/location_2021.csv')
+    location = pd.read_csv('location_clean.csv')
     cases_test = pd.read_csv('cases_test_clean.csv')
     location= location.reset_index()
     cases_test = cases_test.reset_index()
@@ -187,7 +187,7 @@ def location_province_test():
 def section_six():
     
     location_clean = pd.read_csv('location_clean.csv').rename(
-        columns={'Country_Region': 'country', 'Province_State': 'province'})
+        columns={'Country_Region': 'country', 'Province_State': 'province', 'Lat':'lat_prov', 'Long_':'long_prov'})
 
     cases_train1 = pd.read_csv('cases_train_clean.csv')
     cases_test1 = pd.read_csv('cases_test_clean.csv')
@@ -195,7 +195,7 @@ def section_six():
     location_clean = location_clean.groupby(['country','province']).agg({'Confirmed':'sum','Recovered':'sum',
                                                         'Deaths':'sum', 'Active':'sum',
                                                         'Incident_Rate':'mean',
-                                                        'Case_Fatality_Ratio':'mean'})                                                 
+                                                        'Case_Fatality_Ratio':'mean','lat_prov':'mean','long_prov':'mean'})
 
     merged_train = pd.merge(cases_train1,location_clean, how='inner', on=['country', 'province'])
     merged_train.drop(columns=merged_train.columns[0], axis=1, inplace=True)
