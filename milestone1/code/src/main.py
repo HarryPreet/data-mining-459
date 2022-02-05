@@ -13,6 +13,10 @@ from math import cos, asin, sqrt
 from geopy.geocoders import Nominatim
 from geopy import distance
 import sys
+from sklearn.preprocessing import OrdinalEncoder, LabelEncoder, OneHotEncoder
+from sklearn.feature_selection import mutual_info_classif as MIC, SelectKBest
+import warnings
+warnings.filterwarnings('ignore')
 
 cases_train = pd.read_csv('../data/cases_2021_train.csv')
 cases_test = pd.read_csv('../data/cases_2021_test.csv')
@@ -22,11 +26,13 @@ def main():
     global cases_train, cases_test, location
     section_one()
     section_four()
-    
+    section_five()
     section_six()
+    section_seven()
 #1.1
 
 def section_one():
+    print("Section 1: Intialising Outcome Group")
     global cases_train, cases_test, location
     cases_train.groupby('outcome').size()
     hospitalzed = ['Discharged', 'Discharged from hospital', 'Hospitalized', 'critical condition',
@@ -44,7 +50,7 @@ def section_one():
 
 def section_four():
     global cases_train, cases_test, location
-
+    print("Section 4: Cleaning Data")
 
     #Age
     ##Dropping entries with N/A Age Values
@@ -137,16 +143,16 @@ def section_four():
     location['Long_'] = location['Long_'].apply(lambda x: float(x))
     
     
-    cases_train.to_csv('cases_train_clean.csv')
-    cases_test.to_csv('cases_test_clean.csv')
-    location.to_csv('location_clean.csv')
+    cases_train.to_csv('../results/cases_2021_train_processed.csv')
+    cases_test.to_csv('../results/cases_2021_test_processed.csv')
+    location.to_csv('../results/location_2021_processed.csv')
 
     location_province_train()
     location_province_test()
     
 def location_province_train():
-    location = pd.read_csv('location_clean.csv')
-    cases_train = pd.read_csv('cases_train_clean.csv')
+    location = pd.read_csv('../results/location_2021_processed.csv')
+    cases_train = pd.read_csv('../results/cases_2021_train_processed.csv')
     location= location.reset_index()
     cases_train = cases_train.reset_index()
     for i,x in location.iterrows():
@@ -162,11 +168,11 @@ def location_province_train():
                         index = y
                         location.at[i,'Province_State'] = index['province']
                         location = location.drop(location[location['Province_State'].isna()].index)
-    location.to_csv('location_clean_train.csv')
+    location.to_csv('../results/location_2021_processed.csv')
 
 def location_province_test():
-    location = pd.read_csv('location_clean.csv')
-    cases_test = pd.read_csv('cases_test_clean.csv')
+    location = pd.read_csv('../results/location_2021_processed.csv')
+    cases_test = pd.read_csv('../results/cases_2021_test_processed.csv')
     location= location.reset_index()
     cases_test = cases_test.reset_index()
     for i,x in location.iterrows():
@@ -182,15 +188,149 @@ def location_province_test():
                         index = y
                         location.at[i,'Province_State'] = index['province']
                         location = location.drop(location[location['Province_State'].isna()].index)
-    location.to_csv('location_clean_test.csv')
+    location.to_csv('../results/location_2021_processed.csv')
+
+def section_five():
+    print("Section 5: Detecting and Removing Outliers")
+    cases_train = pd.read_csv('../results/cases_2021_train_processed.csv')
+    cases_test = pd.read_csv('../results/cases_2021_test_processed.csv')
+    #Uncomment to produce plots
+    percentile25 = cases_train['age'].quantile(0.25)
+    percentile75 = cases_train['age'].quantile(0.75)
+    iqr = percentile75 - percentile25
+    upper_limit = percentile75 + 1.5 * iqr
+    lower_limit = percentile25 - 1.5 * iqr
+    cases_train[cases_train['age'] > upper_limit]
+    cases_train[cases_train['age'] < lower_limit]
+    train_trim = cases_train[cases_train['age'] < upper_limit]
+    train_trim.shape
+    #Uncomment to produce plots
+    
+    plt.figure(figsize=(16,8))
+    plt.subplot(2,2,1)
+    sns.distplot(cases_train['age'])
+    plt.subplot(2,2,2)
+    sns.boxplot(cases_train['age'])
+    plt.subplot(2,2,3)
+    sns.distplot(train_trim['age'])
+    plt.subplot(2,2,4)
+    sns.boxplot(train_trim['age'])
+    plt.savefig('../plots/task1.5/age1.png')
+    #plt.show()
+
+    train_trim.to_csv('../results/cases_2021_train_processed.csv')
+    percentile25 = cases_test['age'].quantile(0.25)
+    percentile75 = cases_test['age'].quantile(0.75)
+    iqr = percentile75 - percentile25
+    upper_limit = percentile75 + 1.5 * iqr
+    lower_limit = percentile25 - 1.5 * iqr
+    cases_test[cases_test['age'] > upper_limit]
+    cases_test[cases_test['age'] < lower_limit]
+    test_trim = cases_test[cases_test['age'] < upper_limit]
+    test_trim.shape
+    #Uncomment to produce plots
+    plt.figure(figsize=(16,8))
+    plt.subplot(2,2,1)
+    sns.distplot(cases_test['age'])
+    plt.subplot(2,2,2)
+    sns.boxplot(cases_test['age'])
+    plt.subplot(2,2,3)
+    sns.distplot(test_trim['age'])
+    plt.subplot(2,2,4)
+    sns.boxplot(test_trim['age'])
+    plt.savefig('../plots/task1.5/age2.png')
+    
+     #plt.show()
+    test_trim.to_csv('../results/cases_2021_test_processed.csv')
+    location = pd.read_csv('../results/location_2021_processed.csv')
+    #Uncomment to produce plots
+    plt.figure(figsize=(21,5))
+    plt.subplot(1,3,1)
+    sns.distplot(location['Incident_Rate'])
+    plt.subplot(1,3,2)
+    sns.distplot(location['Case_Fatality_Ratio'])
+    plt.subplot(1,3,3)
+    sns.distplot(location['Active'])
+    plt.figure(figsize=(32,8))
+    plt.subplot(1,4,1)
+    plt.subplot(1,4,2)
+    plt.subplot(1,4,3)
+    sns.boxplot(location['Active'])
+    plt.subplot(1,4,4)
+    sns.boxplot(location['Confirmed'])
+    plt.savefig('../plots/task1.5/all_test.png')
+    percentile25 = location['Incident_Rate'].quantile(0.25)
+    percentile75 = location['Incident_Rate'].quantile(0.75)
+    iqr = percentile75 - percentile25
+    upper_limit = percentile75 + 1.5 * iqr
+    lower_limit = percentile25 - 1.5 * iqr
+    location[location['Incident_Rate'] > upper_limit]
+    location[location['Incident_Rate'] < lower_limit]
+    new_df_location = location[location['Incident_Rate'] < upper_limit]
+    new_df_location.shape
+    percentile25 = new_df_location['Case_Fatality_Ratio'].quantile(0.25)
+    percentile75 = new_df_location['Case_Fatality_Ratio'].quantile(0.75)
+    iqr = percentile75 - percentile25
+    upper_limit = percentile75 + 1.5 * iqr
+    lower_limit = percentile25 - 1.5 * iqr
+    new_df_location[new_df_location['Case_Fatality_Ratio'] > upper_limit]
+    new_df_location[new_df_location['Case_Fatality_Ratio'] < lower_limit]
+    new_df_location = new_df_location[new_df_location['Case_Fatality_Ratio'] < upper_limit]
+    new_df_location.shape
+    new_df_location.to_csv('../results/location_2021_processed.csv')
+
+def section_seven():
+    print("Section 7: Calculating MI scores and dropping features")
+    clean_train=pd.read_csv('../results/cases_2021_train_processed.csv')
+    clean_test=pd.read_csv('../results/cases_2021_test_processed.csv')
+    data_train=clean_train[['sex','province','country','date_confirmation','additional_information','source','chronic_disease_binary']].values
+    oe = OrdinalEncoder()
+    oe.fit(data_train)
+    data_train_encoding = oe.transform(data_train)
+    target_train=clean_train[['outcome_group']].values
+    le = LabelEncoder()
+    le.fit(target_train)
+    target_train_encoding = le.transform(target_train)
+    categorical_MI = [0,0,0,0,0,0,0]
+    for i in range(1,6):
+        fs = SelectKBest(score_func=MIC, k='all')
+        fs.fit(data_train_encoding, target_train_encoding)
+        data_train_fs = fs.transform(data_train_encoding)
+        categorical_MI = np.add(categorical_MI, fs.scores_)
+    categorical_MI = categorical_MI/i
+    plt.figure()
+    plt.bar([i for i in range(len(categorical_MI))], categorical_MI)
+    plt.savefig('../plots/task1.7/categorical_MI.png')
+    
+    #To show plots please uncomment this line
+    #
+    data_train2=clean_train[['age','latitude','longitude','Confirmed','Recovered','Deaths','Active','Incident_Rate','Case_Fatality_Ratio','lat_prov','long_prov']].values
+    numerical_MI = [0,0,0,0,0,0,0,0,0,0,0]
+    for i in range(1,6):
+        mi=MIC(data_train2,target_train_encoding)
+        numerical_MI = np.add(numerical_MI, mi)
+    numerical_MI = numerical_MI/i
+    plt.figure()
+    plt.bar([i for i in range(len(numerical_MI))], numerical_MI)
+    clean_train = clean_train.drop(columns='sex')
+    clean_train = clean_train.drop(columns='chronic_disease_binary')
+    clean_train = clean_train.drop(columns='age')
+    clean_test = clean_test.drop(columns='sex')
+    clean_test = clean_test.drop(columns='chronic_disease_binary')
+    clean_test = clean_test.drop(columns='age')
+    clean_train.to_csv('../results/cases_2021_train_processed_features.csv')
+    clean_test.to_csv('../results/cases_2021_test_processed_features.csv')
+    plt.savefig('../plots/task1.7/numerical_MI.png')
+    #To show plots please uncomment this line:
+    #plt.show()
 
 def section_six():
-    
-    location_clean = pd.read_csv('location_clean.csv').rename(
+    print("Section 6: Merging Test and Train with Location")
+    location_clean = pd.read_csv('../results/location_2021_processed.csv').rename(
         columns={'Country_Region': 'country', 'Province_State': 'province','Lat':'lat_prov','Long_':'long_prov'})
 
-    cases_train1 = pd.read_csv('cases_train_clean.csv')
-    cases_test1 = pd.read_csv('cases_test_clean.csv')
+    cases_train1 = pd.read_csv('../results/cases_2021_train_processed.csv')
+    cases_test1 = pd.read_csv('../results/cases_2021_test_processed.csv')
     
     location_clean = location_clean.groupby(['country','province']).agg({'Confirmed':'sum','Recovered':'sum',
                                                         'Deaths':'sum', 'Active':'sum',
@@ -199,10 +339,12 @@ def section_six():
 
     merged_train = pd.merge(cases_train1,location_clean, how='inner', on=['country', 'province'])
     merged_train.drop(columns=merged_train.columns[0], axis=1, inplace=True)
-    merged_train.to_csv('merged_train.csv')
+    print("Number of rows in cases_2021_train_processed: ", len(merged_train.index))
+    merged_train.to_csv('../results/cases_2021_train_processed.csv')
     merged_test = pd.merge(cases_test1, location_clean, how='inner', on=['country', 'province'])
     merged_test.drop(columns=merged_test.columns[0], axis=1, inplace=True)
-    merged_test.to_csv('merged_test.csv')
+    print("Number of rows in cases_2021_test_processed: ", len(merged_test.index))
+    merged_test.to_csv('../results/cases_2021_test_processed.csv')
 
 
 def distance(lat1, lon1, lat2, lon2):
