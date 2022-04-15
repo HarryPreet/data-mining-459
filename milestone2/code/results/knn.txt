@@ -1,0 +1,4 @@
+KNN Model Best Parameters:
+n_neighbors=8
+weights='uniform'
+p=2

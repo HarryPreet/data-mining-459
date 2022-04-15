@@ -1,0 +1,9 @@
+Random Forest Best Parameters:
+n_estimators=400
+min_samples_split= 3
+min_impurity_decrease=0.0
+max_features='auto'
+max_depth=10 
+criterion= 'entropy'
+bootstrap=True
+class_weight = 'balanced'
